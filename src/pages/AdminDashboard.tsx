@@ -14,24 +14,20 @@ export default function AdminDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'orders' | 'music' | 'products'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
-  const [music, setMusic] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAddingMusic, setIsAddingMusic] = useState(false);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
-  const [newSong, setNewSong] = useState({ title: '', artist: '', url: '', cover: '' });
   const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: '' });
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingOrder, setEditingOrder] = useState<any>(null);
-  const [editingMusic, setEditingMusic] = useState<any>(null);
   const [confirmAction, setConfirmAction] = useState<{ 
     type: 'delete' | 'save' | 'add', 
     id?: string, 
     data?: any,
     name?: string,
-    subType?: 'order' | 'product' | 'song',
+    subType?: 'order' | 'product',
     title: string,
     message: string,
     icon: any,
@@ -50,13 +46,11 @@ export default function AdminDashboard() {
     try {
       const fetchOrders = fetch('/api/orders').then(r => r.ok ? r.json() : []);
       const fetchProducts = fetch('/api/products').then(r => r.ok ? r.json() : []);
-      const fetchMusic = fetch('/api/music').then(r => r.ok ? r.json() : []);
 
-      const [oRes, pRes, mRes] = await Promise.all([fetchOrders, fetchProducts, fetchMusic]);
+      const [oRes, pRes] = await Promise.all([fetchOrders, fetchProducts]);
       
       setOrders(Array.isArray(oRes) ? oRes : []);
       setProducts(Array.isArray(pRes) ? pRes : []);
-      setMusic(Array.isArray(mRes) ? mRes : []);
     } catch (e) {
       console.error('Fetch error:', e);
     } finally {
@@ -77,7 +71,6 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'orders', label: 'Pesanan', icon: ShoppingBag },
     { id: 'products', label: 'Produk Shop', icon: Package },
-    { id: 'music', label: 'Playlist', icon: Music },
   ];
 
   if (!isAuthenticated) {
@@ -165,23 +158,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const deleteSong = async (id: string) => {
-    try {
-      const res = await fetch(`/api/music/${id}`, { 
-        method: 'DELETE',
-        headers: { 'Accept': 'application/json' }
-      });
-      if (res.ok) {
-        fetchData();
-        setConfirmAction(null);
-      } else {
-        alert('Gagal menghapus lagu');
-      }
-    } catch (e) {
-      alert('Terjadi kesalahan koneksi');
-    }
-  };
-
   const deleteProduct = async (id: string) => {
     try {
       const res = await fetch(`/api/products/${id}`, { 
@@ -202,19 +178,16 @@ export default function AdminDashboard() {
 
   const handleConfirmAction = () => {
     if (!confirmAction) return;
-    const { type, subType, id, data } = confirmAction;
+    const { type, subType, id } = confirmAction;
 
     if (type === 'delete') {
       if (subType === 'order') deleteOrder(id!);
       else if (subType === 'product') deleteProduct(id!);
-      else if (subType === 'song') deleteSong(id!);
     } else if (type === 'save') {
       if (subType === 'order') executeEditOrder();
       else if (subType === 'product') executeEditProduct();
-      else if (subType === 'song') executeEditMusic();
     } else if (type === 'add') {
       if (subType === 'product') executeAddProduct();
-      else if (subType === 'song') executeAddMusic();
     }
   };
 
@@ -316,69 +289,6 @@ export default function AdminDashboard() {
     } catch (e) {}
   };
 
-  const handleAddMusic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setConfirmAction({
-      type: 'add',
-      subType: 'song',
-      title: 'Tambah Lagu',
-      message: `Tambahkan lagu "${newSong.title}" ke playlist?`,
-      icon: Music,
-      confirmText: 'Tambah',
-      color: 'bg-slate-900'
-    });
-  };
-
-  const handleEditMusic = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMusic) return;
-    setConfirmAction({
-      type: 'save',
-      subType: 'song',
-      title: 'Update Lagu',
-      message: `Simpan perubahan untuk lagu "${editingMusic.title}"?`,
-      icon: Music,
-      confirmText: 'Simpan',
-      color: 'bg-slate-900'
-    });
-  };
-
-  const executeEditMusic = async () => {
-    try {
-      const res = await fetch(`/api/music/${editingMusic.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingMusic)
-      });
-      if (res.ok) {
-        fetchData();
-        setEditingMusic(null);
-        setConfirmAction(null);
-      } else {
-        alert('Gagal memperbarui lagu');
-      }
-    } catch (e) {
-      alert('Terjadi kesalahan koneksi');
-    }
-  };
-
-  const executeAddMusic = async () => {
-    const cover = newSong.cover || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=200';
-    try {
-      const res = await fetch('/api/music', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newSong, cover })
-      });
-      if (res.ok) {
-        fetchData();
-        setIsAddingMusic(false);
-        setNewSong({ title: '', artist: '', url: '', cover: '' });
-        setConfirmAction(null);
-      }
-    } catch (e) {}
-  };
-
 
   return (
     <div className="relative min-h-screen">
@@ -393,12 +303,11 @@ export default function AdminDashboard() {
                 <button 
                   onClick={() => {
                     if (activeTab === 'products') setIsAddingProduct(true);
-                    else if (activeTab === 'music') setIsAddingMusic(true);
                   }} 
                   className="px-6 py-3 bg-primary text-white rounded-2xl text-sm font-bold shadow-xl shadow-primary/20 hover:scale-105 transition-all flex items-center gap-2"
                 >
                     <Plus className="w-4 h-4" />
-                    <span>{activeTab === 'products' ? 'Tambah Produk' : 'Tambah Lagu'}</span>
+                    <span>Tambah Produk</span>
                 </button>
               )}
               <button onClick={fetchData} className="px-6 py-3 glass dark:bg-slate-800 rounded-2xl text-sm font-bold border border-white dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all dark:text-white">Refresh</button>
@@ -580,37 +489,6 @@ export default function AdminDashboard() {
                       </div>
                    </div>
                  )}
-
-                 {activeTab === 'music' && (
-                    <div className="space-y-6">
-                      <div className="flex justify-between items-center">
-                          <h3 className="text-xl font-heading font-bold dark:text-white">Playlist Management</h3>
-                          <button onClick={() => setIsAddingMusic(true)} className="p-2 bg-slate-900 text-white rounded-xl hover:scale-110 transition-transform">
-                            <Plus className="w-4 h-4" />
-                          </button>
-                      </div>
-                      <div className="space-y-3">
-                          {music.map((song) => (
-                             <div key={song.id} className="group flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-900/60 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:shadow-md transition-all border border-slate-100 dark:border-white/5">
-                                 <img src={song.cover} className="w-12 h-12 rounded-xl object-cover bg-slate-200 dark:bg-slate-800" referrerPolicy="no-referrer" />
-                                 <div className="flex-1">
-                                     <p className="text-sm font-bold dark:text-white transition-colors">{song.title}</p>
-                                     <p className="text-xs text-slate-400 dark:text-slate-500 transition-colors">{song.artist}</p>
-                                 </div>
-                                 <div className="hidden md:block text-[10px] bg-slate-900 dark:bg-slate-950 text-white px-2 py-1 rounded-lg truncate max-w-[150px]">{song.url}</div>
-                                 <div className="flex gap-1">
-                                    <button onClick={(e) => { e.stopPropagation(); setEditingMusic({ ...song }); }} className="p-2 text-slate-400 dark:text-slate-500 hover:text-primary transition-colors relative z-10">
-                                      <Edit3 className="w-4 h-4 pointer-events-none" />
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setConfirmAction({ id: song.id, type: 'delete', subType: 'song', name: song.title, title: 'Hapus Lagu', message: `Hapus "${song.title}" dari playlist?`, icon: Music, confirmText: 'Hapus', color: 'bg-rose-500' }); }} className="p-2 text-slate-400 dark:text-slate-500 hover:text-rose-500 transition-colors opacity-100 relative z-10">
-                                      <Trash2 className="w-4 h-4 pointer-events-none" />
-                                    </button>
-                                 </div>
-                             </div>
-                          ))}
-                      </div>
-                    </div>
-                 )}
               </motion.div>
           </div>
         </div>
@@ -727,40 +605,6 @@ export default function AdminDashboard() {
         )}
       </AnimatePresence>
 
-      {/* Edit Music Modal */}
-      <AnimatePresence>
-        {editingMusic && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setEditingMusic(null)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative w-full max-w-md glass p-8 rounded-[40px] border border-white dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl">
-              <h3 className="text-2xl font-heading font-bold mb-6 text-slate-900 dark:text-white">Edit Lagu</h3>
-              <form onSubmit={handleEditMusic} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-2">Judul Lagu</label>
-                  <input placeholder="Judul" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={editingMusic.title} onChange={e => setEditingMusic({...editingMusic, title: e.target.value})} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-2">Nama Artis</label>
-                  <input placeholder="Artis" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={editingMusic.artist} onChange={e => setEditingMusic({...editingMusic, artist: e.target.value})} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-2">YouTube URL</label>
-                  <input placeholder="YouTube URL" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={editingMusic.url} onChange={e => setEditingMusic({...editingMusic, url: e.target.value})} />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-2">Cover URL</label>
-                  <input placeholder="Cover URL" className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={editingMusic.cover} onChange={e => setEditingMusic({...editingMusic, cover: e.target.value})} />
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setEditingMusic(null)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold dark:text-white">Batal</button>
-                  <button type="submit" className="flex-1 py-4 bg-slate-900 dark:bg-primary text-white rounded-2xl font-bold">Simpan</button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* Add Product Modal */}
       <AnimatePresence>
         {isAddingProduct && (
@@ -776,28 +620,6 @@ export default function AdminDashboard() {
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={() => setIsAddingProduct(false)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold dark:text-white">Batal</button>
                   <button type="submit" className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20">Tambah</button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Music Modal */}
-      <AnimatePresence>
-        {isAddingMusic && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsAddingMusic(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} className="relative w-full max-w-md glass p-8 rounded-[40px] border border-white dark:border-white/10 bg-white dark:bg-slate-900 shadow-2xl">
-              <h3 className="text-2xl font-heading font-bold mb-6 text-slate-900 dark:text-white">Tambah Lagu Baru</h3>
-              <form onSubmit={handleAddMusic} className="space-y-4">
-                <input placeholder="Judul Lagu" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={newSong.title} onChange={e => setNewSong({...newSong, title: e.target.value})} />
-                <input placeholder="Nama Artis" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={newSong.artist} onChange={e => setNewSong({...newSong, artist: e.target.value})} />
-                <input placeholder="YouTube URL" required className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={newSong.url} onChange={e => setNewSong({...newSong, url: e.target.value})} />
-                <input placeholder="Cover Image URL (Opsional)" className="w-full bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl outline-none dark:text-white" value={newSong.cover} onChange={e => setNewSong({...newSong, cover: e.target.value})} />
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setIsAddingMusic(false)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl font-bold dark:text-white">Batal</button>
-                  <button type="submit" className="flex-1 py-4 bg-slate-900 dark:bg-primary text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20">Simpan</button>
                 </div>
               </form>
             </motion.div>

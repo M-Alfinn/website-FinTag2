@@ -1,78 +1,58 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Play, Pause, SkipForward, SkipBack, Volume2, 
+  Play, Pause, SkipForward, SkipBack, 
   Music, ListMusic, Heart, Share2, 
-  LayoutDashboard, MoreHorizontal, Sparkles, Edit3, X, Save, Trash2
+  LayoutDashboard, MoreHorizontal, Sparkles, X
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import ReactPlayer from 'react-player';
 import { cn } from '../lib/utils';
 
+const LOCAL_SONGS = [
+  {
+    id: '1',
+    title: "The Man Who Can't Be Moved",
+    artist: "The Script",
+    url: "/music/man-who-cant-be-moved.mp3",
+    cover: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=400"
+  },
+  {
+    id: '2',
+    title: "Locked Out Of Heaven",
+    artist: "Bruno Mars",
+    url: "/music/locked-out-of-heaven.mp3",
+    cover: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=400"
+  },
+  {
+    id: '3',
+    title: "Breakeven",
+    artist: "The Script",
+    url: "/music/breakeven.mp3",
+    cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400"
+  }
+];
+
 export default function MusicPlayer() {
   const Player = ReactPlayer as any;
-  const [songs, setSongs] = useState<any[]>([]);
+  const [songs] = useState<any[]>(LOCAL_SONGS);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.8);
   const [played, setPlayed] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [editingSong, setEditingSong] = useState<any>(null);
   const playerRef = useRef<any>(null);
-
-  const fetchSongs = () => {
-    fetch('/api/music')
-      .then(res => res.json())
-      .then(setSongs);
-  };
-
-  useEffect(() => {
-    fetchSongs();
-  }, []);
-
-  const handleUpdateSong = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingSong) return;
-
-    try {
-      const response = await fetch(`/api/music/${editingSong.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingSong)
-      });
-      if (response.ok) {
-        fetchSongs();
-        setEditingSong(null);
-      }
-    } catch (error) {
-      console.error('Update song error:', error);
-    }
-  };
-
-  const handleDeleteSong = async (id: string) => {
-    if (!confirm('Hapus lagu dari playlist?')) return;
-    try {
-      const response = await fetch(`/api/music/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        fetchSongs();
-        if (songs[currentIndex]?.id === id) {
-          setCurrentIndex(0);
-        }
-      }
-    } catch (error) {
-      console.error('Delete song error:', error);
-    }
-  };
 
   const currentSong = songs[currentIndex];
 
   const handleNext = () => {
     setCurrentIndex(prev => (prev + 1) % songs.length);
     setPlayed(0);
+    setIsPlaying(true);
   };
 
   const handleBack = () => {
     setCurrentIndex(prev => (prev - 1 + songs.length) % songs.length);
     setPlayed(0);
+    setIsPlaying(true);
   };
 
   const handleProgress = (state: any) => {
@@ -81,10 +61,6 @@ export default function MusicPlayer() {
       const dur = playerRef.current.getDuration();
       if (dur > 0) setDuration(dur);
     }
-  };
-
-  const handleDuration = (dur: number) => {
-    setDuration(dur);
   };
 
   const formatTime = (seconds: number) => {
@@ -140,7 +116,7 @@ export default function MusicPlayer() {
             </div>
 
             <div className="pt-6 flex justify-between items-end">
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] leading-none mb-1">Now Playing</p>
                 <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white tracking-tight leading-none">{currentSong.title}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">{currentSong.artist}</p>
@@ -186,30 +162,19 @@ export default function MusicPlayer() {
                 </button>
                 <button onClick={handleNext} className="p-2 text-slate-400 dark:text-slate-500 hover:text-secondary dark:hover:text-white transition-all hover:scale-110 active:scale-90"><SkipForward className="w-6 h-6 fill-current" /></button>
             </div>
-
-            <div className="flex items-center gap-4 bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-2xl border border-white dark:border-white/5">
-               <Volume2 className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-               <input 
-                 type="range" 
-                 min="0" max="1" step="0.01" 
-                 value={volume}
-                 onChange={(e) => setVolume(Number(e.target.value))}
-                 className="flex-1 accent-primary h-1 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer"
-               />
-            </div>
           </div>
         </div>
 
         {/* Right: Playlist */}
         <div className="flex-1 space-y-6 py-2">
            <div className="flex items-center justify-between px-2">
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 <h3 className="font-heading font-bold text-xl leading-none flex items-center gap-2 dark:text-white">
                    Playlist Mahasiswa
                 </h3>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">TRENDING // {songs.length} TRACKS</p>
               </div>
-              <Sparkles className="w-5 h-5 text-primary opacity-40" />
+              <Music className="w-5 h-5 text-primary opacity-40" />
            </div>
 
            <div className="space-y-2 overflow-y-auto max-h-[680px] pr-2 custom-scrollbar lg:grid lg:grid-cols-1 gap-2">
@@ -248,37 +213,8 @@ export default function MusicPlayer() {
                       <p className={cn("text-sm font-bold truncate tracking-tight", currentIndex === i ? "text-white" : "text-slate-900 dark:text-white")}>{song.title}</p>
                       <p className={cn("text-[10px] uppercase font-bold tracking-widest opacity-60", currentIndex === i ? "text-white/60" : "text-slate-400 dark:text-slate-500")}>{song.artist}</p>
                    </div>
-                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setEditingSong(song); }}
-                        className={cn("p-2 rounded-xl border transition-all", currentIndex === i ? "border-white/20 hover:bg-white/10 text-white" : "border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-primary")}
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSong(song.id); }}
-                        className={cn("p-2 rounded-xl border transition-all", currentIndex === i ? "border-white/20 hover:bg-white/10 text-white" : "border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400 dark:text-slate-500 hover:text-rose-500")}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                   </div>
                 </div>
               ))}
-           </div>
-
-           <div className="bento-card p-6 bg-primary text-white border-transparent overflow-hidden relative group">
-                <div className="relative z-10 flex items-center justify-between">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-white/60 uppercase tracking-[0.2em] leading-none mb-1">Coming Soon</p>
-                        <h4 className="text-xl font-heading font-bold leading-tight">AI Curated Mix</h4>
-                    </div>
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                       <Music className="w-5 h-5 text-white" />
-                    </div>
-                </div>
-                <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-[40px] pointer-events-none" />
            </div>
         </div>
       </div>
@@ -288,19 +224,9 @@ export default function MusicPlayer() {
           ref={playerRef}
           url={currentSong.url}
           playing={isPlaying}
-          volume={volume}
+          volume={0.8}
           playsinline
           controls={false}
-          config={{
-            youtube: {
-              playerVars: { 
-                autoplay: 1, 
-                controls: 0,
-                modestbranding: 1,
-                rel: 0
-              }
-            } as any
-          }}
           onProgress={handleProgress}
           onReady={(player: any) => {
             const dur = player.getDuration();
@@ -309,96 +235,11 @@ export default function MusicPlayer() {
           onEnded={handleNext}
           onError={(e: any) => {
             console.error('Music Player Error:', e);
-            // If sound fails, try toggling play to force interaction
-            if (isPlaying) {
-              setTimeout(() => setIsPlaying(true), 100);
-            }
           }}
           width="0"
           height="0"
         />
       </div>
-      
-      {/* Edit Modal */}
-      <AnimatePresence>
-        {editingSong && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
-               initial={{ opacity: 0 }} 
-               animate={{ opacity: 1 }} 
-               exit={{ opacity: 0 }} 
-               onClick={() => setEditingSong(null)} 
-               className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" 
-            />
-            <motion.div 
-               initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-               animate={{ scale: 1, opacity: 1, y: 0 }} 
-               exit={{ scale: 0.9, opacity: 0, y: 20 }} 
-               className="relative w-full max-w-md bg-white dark:bg-slate-800 p-10 rounded-[48px] border border-white dark:border-white/5 shadow-2xl space-y-8"
-            >
-              <div className="flex justify-between items-center">
-                <h3 className="text-3xl font-heading font-bold text-slate-900 dark:text-white">Edit Lagu</h3>
-                <button onClick={() => setEditingSong(null)} className="p-3 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-2xl transition-colors">
-                  <X className="w-6 h-6 text-slate-400" />
-                </button>
-              </div>
-
-              <form onSubmit={handleUpdateSong} className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Judul Lagu</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={editingSong.title}
-                      onChange={(e) => setEditingSong({ ...editingSong, title: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Artis</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={editingSong.artist}
-                      onChange={(e) => setEditingSong({ ...editingSong, artist: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">URL Youtube</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={editingSong.url}
-                      onChange={(e) => setEditingSong({ ...editingSong, url: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1">Cover Image (URL)</label>
-                    <input 
-                      type="text" 
-                      required
-                      value={editingSong.cover}
-                      onChange={(e) => setEditingSong({ ...editingSong, cover: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-900/50 border-none rounded-2xl px-6 py-4 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <button 
-                  type="submit"
-                  className="w-full py-5 bg-secondary dark:bg-primary text-white rounded-[28px] font-bold shadow-xl shadow-secondary/20 dark:shadow-primary/20 hover:bg-slate-800 dark:hover:bg-primary-dark transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-                >
-                  <Save className="w-5 h-5" />
-                  Simpan Perubahan
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
