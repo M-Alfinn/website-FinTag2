@@ -35,6 +35,7 @@ export default function MusicPlayer() {
   const [songs] = useState<any[]>(LOCAL_SONGS);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -44,6 +45,7 @@ export default function MusicPlayer() {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.src = currentSong.url;
+      setIsBuffering(true);
       if (isPlaying) {
         audioRef.current.play().catch(console.error);
       }
@@ -82,6 +84,14 @@ export default function MusicPlayer() {
     }
   };
 
+  const onCanPlay = () => {
+    setIsBuffering(false);
+  };
+
+  const onWaiting = () => {
+    setIsBuffering(true);
+  };
+
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (audioRef.current) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -104,8 +114,11 @@ export default function MusicPlayer() {
       <audio 
         ref={audioRef}
         src={currentSong.url}
+        preload="auto"
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
+        onCanPlay={onCanPlay}
+        onWaiting={onWaiting}
         onEnded={handleNext}
       />
 
@@ -177,9 +190,20 @@ export default function MusicPlayer() {
                 <button onClick={handleBack} className="p-2 text-slate-400 dark:text-slate-500 hover:text-secondary dark:hover:text-white transition-all hover:scale-110 active:scale-90"><SkipBack className="w-6 h-6 fill-current" /></button>
                 <button 
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-16 h-16 bg-secondary dark:bg-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-secondary/20 dark:shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                  className="w-16 h-16 bg-secondary dark:bg-primary text-white rounded-full flex items-center justify-center shadow-xl shadow-secondary/20 dark:shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                  disabled={isBuffering && isPlaying}
                 >
-                  {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />}
+                  {isBuffering && isPlaying ? (
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full"
+                    />
+                  ) : isPlaying ? (
+                    <Pause className="w-6 h-6 fill-current" />
+                  ) : (
+                    <Play className="w-6 h-6 fill-current ml-1" />
+                  )}
                 </button>
                 <button onClick={handleNext} className="p-2 text-slate-400 dark:text-slate-500 hover:text-secondary dark:hover:text-white transition-all hover:scale-110 active:scale-90"><SkipForward className="w-6 h-6 fill-current" /></button>
             </div>
