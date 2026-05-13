@@ -1,8 +1,15 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, CheckCircle2, Circle, Star, Zap, Droplets, Wallet, Footprints, Clock, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 import { cn } from '../lib/utils';
+
+const DEFAULT_CHALLENGES = [
+  { id: '1', title: "Minum Air 2L", category: "Health", icon: "Droplets" },
+  { id: '2', title: "No Jajan Hari Ini", category: "Finance", icon: "Wallet" },
+  { id: '3', title: "Jalan 5000 Langkah", category: "Fitness", icon: "Footprints" }
+];
 
 export default function Challenge() {
   const [challenges, setChallenges] = useState<any[]>([]);
@@ -11,7 +18,16 @@ export default function Challenge() {
   useEffect(() => {
     fetch('/api/challenges')
       .then(res => res.json())
-      .then(setChallenges);
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setChallenges(data);
+        } else {
+          setChallenges(DEFAULT_CHALLENGES);
+        }
+      })
+      .catch(() => {
+        setChallenges(DEFAULT_CHALLENGES);
+      });
     
     const saved = localStorage.getItem('completed_challenges');
     if (saved) setCompleted(JSON.parse(saved));
@@ -144,5 +160,3 @@ export default function Challenge() {
     </div>
   );
 }
-
-import { Link } from 'react-router-dom';

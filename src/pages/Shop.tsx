@@ -70,7 +70,7 @@ export default function Shop() {
   const executeOrder = async () => {
     const message = `Halo Admin FinTag! Saya ingin memesan:\n\n*Produk:* ${activeProduct.name}\n*Jumlah:* ${form.quantity}\n*Custom Foto:* ${form.customPhoto ? 'Ya' : 'Tidak'}\n*Total:* ${formatRupiah(totalPrice)}\n\n*Nama:* ${form.name}\n*WA:* ${form.whatsapp}\n*Alamat:* ${form.address}\n*Catatan:* ${form.notes}`;
     
-    const waUrl = `https://wa.me/${(import.meta as any).env.VITE_CONTACT_WHATSAPP || '6281234567890'}?text=${encodeURIComponent(message)}`;
+    const waUrl = `https://wa.me/${(import.meta as any).env.VITE_CONTACT_WHATSAPP || '6289693727197'}?text=${encodeURIComponent(message)}`;
     
     await fetch('/api/orders', {
       method: 'POST',
