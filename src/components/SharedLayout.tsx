@@ -44,7 +44,7 @@ export default function SharedLayout({ children }: { children: React.ReactNode }
     { name: 'Pomodoro', path: '/pomodoro', icon: Clock },
   ];
 
-  const allMenuItems = [...mainMenuItems, adminMenu, ...extraMenuItems];
+  const allMenuItems = [...mainMenuItems, ...extraMenuItems, adminMenu];
 
   useEffect(() => {
     setIsMenuOpen(false);

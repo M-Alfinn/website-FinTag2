@@ -322,7 +322,7 @@ export default function LandingPage() {
       >
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
-            <h2 className="text-4xl lg:text-6xl font-heading font-black italic leading-tight uppercase tracking-tighter">
+            <h2 className="text-4xl lg:text-6xl font-heading font-black italic leading-tight uppercase tracking-tighter text-white">
               Sudah <span className="text-primary">12.000+</span> Mahasiswa Berhemat.
             </h2>
             <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-md">

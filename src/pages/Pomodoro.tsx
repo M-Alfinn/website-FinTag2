@@ -113,26 +113,28 @@ export default function Pomodoro() {
                 />
             </div>
 
-            <div className="flex gap-2 p-1 bg-slate-50 dark:bg-slate-900/60 rounded-[20px] border border-slate-100 dark:border-white/5 overflow-x-auto no-scrollbar">
-                {(['focus', 'short', 'long', 'custom'] as Mode[]).map((m) => (
-                    <button
-                        key={m}
-                        onClick={() => changeMode(m)}
-                        className={cn(
-                            "px-5 py-2.5 rounded-[18px] text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap",
-                            mode === m 
-                                ? "bg-secondary dark:bg-primary text-white shadow-md shadow-secondary/20" 
-                                : "text-slate-400 dark:text-slate-500 hover:text-secondary dark:hover:text-white"
-                        )}
-                    >
-                        {m === 'focus' ? 'Focus' : m === 'short' ? 'Break' : m === 'long' ? 'Long' : 'Custom'}
-                    </button>
-                ))}
+            <div className="w-full flex justify-center px-4">
+                <div className="inline-flex items-center gap-1 p-1 bg-slate-50 dark:bg-slate-900/60 rounded-3xl border border-slate-200/60 dark:border-white/5 overflow-x-auto no-scrollbar">
+                    {(['focus', 'short', 'long', 'custom'] as Mode[]).map((m) => (
+                        <button
+                            key={m}
+                            onClick={() => changeMode(m)}
+                            className={cn(
+                                "px-4 lg:px-6 py-2.5 rounded-2xl text-[10px] font-bold uppercase tracking-tighter lg:tracking-widest transition-all whitespace-nowrap relative z-10",
+                                mode === m 
+                                    ? "bg-slate-950 dark:bg-primary text-white shadow-lg shadow-slate-950/20 dark:shadow-primary/20 scale-[1.02]" 
+                                    : "text-slate-500 dark:text-slate-400 hover:bg-white/40 dark:hover:bg-white/5"
+                            )}
+                        >
+                            {m === 'focus' ? 'Focus' : m === 'short' ? 'Break' : m === 'long' ? 'Long' : 'Custom'}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            <div className="relative w-72 h-72 flex items-center justify-center">
+            <div className="relative w-64 h-64 lg:w-72 lg:h-72 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full border-8 border-slate-50 dark:border-slate-800/50" />
-                <svg className="w-full h-full -rotate-90 relative z-10">
+                <svg className="w-full h-full -rotate-90 relative z-10" viewBox="0 0 288 288">
                     <motion.circle 
                         cx="144" cy="144" r="136" 
                         className="stroke-primary" 
@@ -145,7 +147,7 @@ export default function Pomodoro() {
                     />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-7xl font-heading font-bold text-secondary dark:text-white tracking-tighter leading-none mb-1">
+                    <span className="text-6xl lg:text-7xl font-heading font-bold text-secondary dark:text-white tracking-tighter leading-none mb-1">
                         {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
                     </span>
                     <span className="text-[10px] font-bold text-primary dark:text-primary uppercase tracking-[0.4em]">{mode} active</span>
@@ -182,25 +184,9 @@ export default function Pomodoro() {
 
         {/* Stats & Tips */}
         <div className="lg:col-span-12 xl:col-span-5 grid grid-cols-1 gap-6">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="bento-card p-6 space-y-4 flex flex-col justify-between">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                        <Zap className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Sesi Selesai</p>
-                        <p className="text-4xl font-heading font-bold text-secondary dark:text-white">{sessions}</p>
-                    </div>
-                </div>
-                <div className="bento-card p-6 space-y-4 flex flex-col justify-between">
-                    <div className="w-10 h-10 bg-secondary/5 dark:bg-white/5 rounded-xl flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-secondary dark:text-white" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Total Menit</p>
-                        <p className="text-4xl font-heading font-bold text-secondary dark:text-white">{sessions * MODES.focus.time}</p>
-                    </div>
-                </div>
+            {/* Stats removed as requested */}
+            <div className="hidden">
+                 {/* Placeholder for layout preservation if needed, but grid should handle it */}
             </div>
 
             <div className="bento-card p-8 space-y-6">
@@ -227,20 +213,6 @@ export default function Pomodoro() {
                 </div>
             </div>
 
-            <button className="w-full p-2 bg-secondary dark:bg-slate-900 text-white rounded-[32px] flex items-center justify-between group overflow-hidden relative shadow-lg border border-white/5">
-                <div className="flex items-center gap-4 pl-6 py-4">
-                    <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
-                        <LayoutDashboard className="w-5 h-5" />
-                    </div>
-                    <div className="text-left">
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none mb-1">Cek Progress</p>
-                        <h4 className="text-base font-heading font-bold uppercase leading-none">Statistik Belajar</h4>
-                    </div>
-                </div>
-                <div className="bg-primary p-4 rounded-2xl mr-1 group-hover:translate-x-1 transition-transform">
-                   <ChevronRight className="w-5 h-5" />
-                </div>
-            </button>
         </div>
       </div>
 
