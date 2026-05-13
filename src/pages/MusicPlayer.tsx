@@ -1,11 +1,10 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Play, Pause, SkipForward, SkipBack, 
-  Music, ListMusic, Heart, Share2, 
+  Music, Heart, Share2, 
   LayoutDashboard, MoreHorizontal, Sparkles, X
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import ReactPlayer from 'react-player';
 import { cn } from '../lib/utils';
 
 const LOCAL_SONGS = [
@@ -33,51 +32,83 @@ const LOCAL_SONGS = [
 ];
 
 export default function MusicPlayer() {
-  const Player = ReactPlayer as any;
   const [songs] = useState<any[]>(LOCAL_SONGS);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [played, setPlayed] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const playerRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentSong = songs[currentIndex];
 
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.src = currentSong.url;
+      if (isPlaying) {
+        audioRef.current.play().catch(console.error);
+      }
+    }
+  }, [currentIndex]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(console.error);
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying]);
+
   const handleNext = () => {
     setCurrentIndex(prev => (prev + 1) % songs.length);
-    setPlayed(0);
     setIsPlaying(true);
   };
 
   const handleBack = () => {
     setCurrentIndex(prev => (prev - 1 + songs.length) % songs.length);
-    setPlayed(0);
     setIsPlaying(true);
   };
 
-  const handleProgress = (state: any) => {
-    setPlayed(state.played);
-    if (duration === 0 && playerRef.current) {
-      const dur = playerRef.current.getDuration();
-      if (dur > 0) setDuration(dur);
+  const onTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const onLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (audioRef.current) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const clickedValue = (x / rect.width) * duration;
+      audioRef.current.currentTime = clickedValue;
     }
   };
 
   const formatTime = (seconds: number) => {
-    const date = new Date(seconds * 1000);
-    const mm = date.getUTCMinutes();
-    const ss = date.getUTCSeconds().toString().padStart(2, '0');
-    return `${mm}:${ss}`;
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (!currentSong) return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-    </div>
-  );
+  if (!currentSong) return null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-12">
+      <audio 
+        ref={audioRef}
+        src={currentSong.url}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoadedMetadata}
+        onEnded={handleNext}
+      />
+
       <div className="flex flex-col lg:flex-row gap-8 items-stretch pt-4">
         
         {/* Left: Player Artwork - Bento Style */}
@@ -121,11 +152,6 @@ export default function MusicPlayer() {
                 <h2 className="text-2xl font-heading font-bold text-slate-900 dark:text-white tracking-tight leading-none">{currentSong.title}</h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">{currentSong.artist}</p>
               </div>
-              <div className="flex gap-2">
-                 <button className="w-8 h-8 rounded-full border border-slate-100 dark:border-white/5 flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-rose-500 hover:border-rose-100 transition-all">
-                    <Heart className="w-4 h-4 fill-current" />
-                 </button>
-              </div>
             </div>
           </motion.div>
 
@@ -133,21 +159,16 @@ export default function MusicPlayer() {
             <div className="space-y-4">
               <div 
                 className="relative w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden cursor-pointer group"
-                onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const clickedValue = x / rect.width;
-                  playerRef.current?.seekTo(clickedValue);
-                }}
+                onClick={handleSeek}
               >
                   <motion.div 
                     className="absolute left-0 top-0 bottom-0 bg-primary shadow-lg shadow-primary/20 z-10"
-                    animate={{ width: `${played * 100}%` }}
+                    style={{ width: `${(currentTime / duration) * 100}%` }}
                   />
                   <div className="absolute inset-x-0 top-0 bottom-0 bg-slate-100/50 dark:bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="flex justify-between text-[10px] font-bold text-slate-400 dark:text-slate-500 font-mono tracking-widest">
-                  <span>{formatTime(played * duration)}</span>
+                  <span>{formatTime(currentTime)}</span>
                   <span>{formatTime(duration)}</span>
               </div>
             </div>
@@ -217,28 +238,6 @@ export default function MusicPlayer() {
               ))}
            </div>
         </div>
-      </div>
-
-    <div className="hidden pointer-events-none">
-        <Player
-          ref={playerRef}
-          url={currentSong.url}
-          playing={isPlaying}
-          volume={0.8}
-          playsinline
-          controls={false}
-          onProgress={handleProgress}
-          onReady={(player: any) => {
-            const dur = player.getDuration();
-            if (dur > 0) setDuration(dur);
-          }}
-          onEnded={handleNext}
-          onError={(e: any) => {
-            console.error('Music Player Error:', e);
-          }}
-          width="0"
-          height="0"
-        />
       </div>
     </div>
   );
