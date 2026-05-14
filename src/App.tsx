@@ -5,12 +5,9 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from './lib/utils';
-import { GoogleGenAI } from '@google/genai';
 import ReactMarkdown from 'react-markdown';
 
-// Initialize Gemini AI
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
+// Initialize Gemini AI (Moved to backend for security)
 // Pages
 import LandingPage from './pages/LandingPage';
 import FinancialTracker from './pages/FinancialTracker';
@@ -114,40 +111,93 @@ function AIChatBubble() {
         minute: '2-digit'
       });
 
+      const systemInstruction = `Kamu adalah FinBot, asisten AI cerdas untuk platform FinTag. FinTag menjual produk utama berupa **Gantungan Kunci NFC** yang memudahkan mahasiswa mencatat keuangan. Kamu ramah, profesional, dan pintar. 
+      Waktu sekarang adalah: ${timeStr}.
+      
+      INFORMASI WEBSITE FINTAG:
+      Website ini memiliki beberapa fitur dan halaman utama:
+      1. **Home (/)**: Halaman utama yang menjelaskan apa itu FinTag dan produk Gantungan Kunci NFC-nya.
+      2. **Tracker (/tracker)**: Alat pencatat keuangan otomatis yang terintegrasi dengan produk FinTag.
+      3. **Shop (/shop)**: Toko resmi untuk memesan "Gantungan NFC FinTag" seharga Rp 15.000 (Custom foto +Rp 2.000).
+      4. **Games (/games)**: Area hiburan dengan 5 mini games: "Hemat atau Boros" (Quiz Finansial), "Coin Catch" (Tangkap koin), "Memory Match" (Asah otak), "Quick Tap" (Ketangkasan), dan "Color Reflex" (Refleks).
+      5. **Challenge (/challenge)**: Program tantangan harian. Saat ini ada 3 tantangan: "Minum Air 2L" (Health), "No Jajan Hari Ini" (Finance), dan "Jalan 5000 Langkah" (Fitness).
+      6. **Music (/music)**: Fitur Music Player. Saat ini ada 3 lagu utama: "The Man Who Can't Be Moved" oleh The Script, "Locked Out Of Heaven" oleh Bruno Mars, dan "Breakeven" oleh The Script.
+      7. **AR Guide (/ar)**: Panduan interaktif menggunakan teknologi Augmented Reality untuk membantu user baru.
+      8. **Timer (/pomodoro)**: Alat bantu produktivitas menggunakan teknik Pomodoro. (Fokus & Istirahat).
+
+      PENTING: Jangan berikan jawaban "ngasal" atau improvisasi tentang data website jika tidak ada di informasi di atas. Jika data yang diminta user tidak ada, sampaikan dengan jujur dan ramah.
+
+      Kamu bisa menjawab apa saja, baik tentang manajemen keuangan, teknologi NFC, maupun topik umum lainnya seperti AI dan Gemini. 
+      Jawablah dengan bahasa Indonesia yang santai tapi sopan. Fokus pada memberikan solusi bermanfaat bagi mahasiswa.
+      
+      ATURAN FORMAT JAWABAN (SANGAT PENTING):
+      - Gunakan Markdown yang rapi dan terstruktur.
+      - Gunakan **Bold** untuk poin penting.
+      - Gunakan Bullet Points (-) untuk daftar informasi.
+      - Gunakan Line Breaks (\n\n) antar paragraf agar tidak padat.
+      - Jangan memberikan paragraf yang terlalu panjang.
+      - Jika memberikan tips, bagi menjadi poin-poin yang jelas (1, 2, 3).
+      - Jika ditanya tentang data hari ini atau waktu, gunakan informasi waktu yang diberikan.`;
+
       // Prepare conversation history
-      const contents = [
-        ...messages.map(msg => ({
+      const history = (messages || [])
+        .map(msg => ({
           role: msg.isBot ? 'model' : 'user',
           parts: [{ text: msg.text }]
-        })),
-        { role: 'user', parts: [{ text: text }] }
-      ];
+        }));
 
-      const result = await ai.models.generateContent({
-        model: "gemini-flash-latest",
-        contents: contents,
-        config: {
-          systemInstruction: `Kamu adalah FinBot, asisten AI cerdas untuk platform FinTag. FinTag menjual produk utama berupa **Gantungan Kunci NFC** yang memudahkan mahasiswa mencatat keuangan. Kamu ramah, profesional, dan pintar. 
-          Waktu sekarang adalah: ${timeStr}.
-          Kamu bisa menjawab apa saja, baik tentang manajemen keuangan, teknologi NFC, maupun topik umum lainnya seperti AI dan Gemini. 
-          Jawablah dengan bahasa Indonesia yang santai tapi sopan. Fokus pada memberikan solusi bermanfaat bagi mahasiswa.
-          
-          ATURAN FORMAT JAWABAN (SANGAT PENTING):
-          - Gunakan Markdown yang rapi dan terstruktur.
-          - Gunakan **Bold** untuk poin penting.
-          - Gunakan Bullet Points (-) untuk daftar informasi.
-          - Gunakan Line Breaks (\n\n) antar paragraf agar tidak padat.
-          - Jangan memberikan paragraf yang terlalu panjang.
-          - Jika memberikan tips, bagi menjadi poin-poin yang jelas (1, 2, 3).
-          - Jika ditanya tentang data hari ini atau waktu, gunakan informasi waktu yang diberikan.`,
+      // Ensure alternating roles and starts with User
+      const filteredHistory: any[] = [];
+      let lastRole = '';
+      for (const msg of history) {
+        if (filteredHistory.length === 0 && msg.role !== 'user') continue;
+        if (msg.role !== lastRole) {
+          filteredHistory.push(msg);
+          lastRole = msg.role;
         }
+      }
+
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: filteredHistory,
+          text: text,
+          systemInstruction
+        })
       });
 
+      let result;
+      try {
+        const responseText = await response.text();
+        if (!responseText) {
+          throw new Error("Server mengirim respons kosong.");
+        }
+        result = JSON.parse(responseText);
+      } catch (e: any) {
+        console.error('JSON Parse error:', e);
+        throw new Error(`Gagal memproses data AI: ${e.message}. Pastikan server berjalan dengan benar.`);
+      }
+      
+      if (!response.ok) {
+        throw new Error(result.details || result.error || 'Chat API failed');
+      }
+      
       const botText = result.text || "Maaf, saya tidak bisa memberikan jawaban saat ini.";
       setMessages(prev => [...prev, { text: botText, isBot: true }]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { text: "Maaf, koneksi saya ke otak AI terputus. Coba tanya lagi ya!", isBot: true }]);
+    } catch (error: any) {
+      console.error('Chat error detail:', error);
+      let errorMessage = `Gagal terhubung ke AI: ${error.message || 'Koneksi terputus'}`;
+      
+      if (error.message?.includes('configured') || error.message?.includes('diketahui')) {
+        errorMessage = "API Key Gemini belum dikonfigurasi di server. Jika kamu menjalankan secara lokal, pastikan kamu sudah membuat file .env (BUKAN .env.example) dan mengisinya dengan API Key.";
+      } else if (error.message?.includes('429') || error.message?.includes('quota') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        errorMessage = "Maaf, kuota harian AI saya sedang habis (ini batas gratis dari Google). Coba lagi beberapa saat lagi ya!";
+      } else if (error.message?.includes('API_KEY_INVALID') || error.message?.includes('API key not valid')) {
+        errorMessage = "API Key Gemini tidak valid. Silakan periksa kembali API Key kamu.";
+      }
+      
+      setMessages(prev => [...prev, { text: errorMessage, isBot: true }]);
     } finally {
       setIsLoading(false);
     }

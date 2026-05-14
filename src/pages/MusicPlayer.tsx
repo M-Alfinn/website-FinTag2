@@ -6,30 +6,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from '../lib/utils';
-
-const LOCAL_SONGS = [
-  {
-    id: '1',
-    title: "The Man Who Can't Be Moved",
-    artist: "The Script",
-    url: "/music/man-who-cant-be-moved.mp3",
-    cover: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=400"
-  },
-  {
-    id: '2',
-    title: "Locked Out Of Heaven",
-    artist: "Bruno Mars",
-    url: "/music/locked-out-of-heaven.mp3",
-    cover: "https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=400"
-  },
-  {
-    id: '3',
-    title: "Breakeven",
-    artist: "The Script",
-    url: "/music/breakeven.mp3",
-    cover: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400"
-  }
-];
+import { LOCAL_SONGS } from '../data/musicData';
 
 export default function MusicPlayer() {
   const [songs] = useState<any[]>(LOCAL_SONGS);
@@ -215,7 +192,7 @@ export default function MusicPlayer() {
            <div className="flex items-center justify-between px-2">
               <div className="space-y-1 text-left">
                 <h3 className="font-heading font-bold text-xl leading-none flex items-center gap-2 dark:text-white">
-                   Playlist Mahasiswa
+                   Playlist
                 </h3>
                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">TRENDING // {songs.length} TRACKS</p>
               </div>

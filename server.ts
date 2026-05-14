@@ -1,16 +1,14 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import cors from 'cors';
 import fs from 'fs/promises';
-
 import { GoogleGenAI } from '@google/genai';
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
-
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
   app.use(cors());
   app.use(express.json());
@@ -302,6 +300,50 @@ async function startServer() {
       condition: "Sunny",
       icon: "sun"
     });
+  });
+
+  app.post('/api/chat', async (req, res) => {
+    console.log('[CHAT] Request diterima dari frontend');
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.error('[CHAT] GEMINI_API_KEY tidak ditemukan di environment variables.');
+        return res.status(500).json({ 
+          error: 'GEMINI_API_KEY belum dikonfigurasi di server.',
+          details: 'Jika kamu menjalankan secara lokal, buatlah file .env di root folder dan isi dengan GEMINI_API_KEY=KODE_API_KEY_KAMU (Jangan di file .env.example).'
+        });
+      }
+
+      const { messages, text, systemInstruction } = req.body;
+      console.log('[CHAT] Mengirim pesan ke Gemini...');
+      
+      const ai = new GoogleGenAI({ apiKey });
+      
+      const response = await ai.models.generateContent({
+        model: "gemini-flash-latest",
+        contents: [
+          ...messages,
+          { role: 'user', parts: [{ text: text }] }
+        ],
+        config: {
+          systemInstruction: systemInstruction
+        }
+      });
+
+      if (!response || !response.text) {
+        console.error('[CHAT] Respons Gemini kosong');
+        return res.status(500).json({ error: 'AI mengembalikan respons kosong' });
+      }
+
+      console.log('[CHAT] Berhasil mendapatkan respons dari Gemini');
+      res.json({ text: response.text });
+    } catch (error: any) {
+      console.error('[CHAT] Error pada API Chat:', error);
+      res.status(500).json({ 
+        error: 'Gagal menghasilkan konten', 
+        details: error.message || 'Terjadi kesalahan internal pada server'
+      });
+    }
   });
 
   if (process.env.NODE_ENV !== 'production') {
