@@ -3,13 +3,20 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Search, Wallet, PieChart, TrendingDown, 
   Trash2, Filter, Smartphone, Scan, Bell, MoreVertical,
-  Coffee, ShoppingBag, GraduationCap, Utensils, Bus, Gamepad2
+  Coffee, ShoppingBag, GraduationCap, Utensils, Bus, Gamepad2,
+  LogIn, LogOut
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart as RePieChart, Pie, Cell, Legend
 } from 'recharts';
 import { formatRupiah, cn } from '../lib/utils';
+import { useAuth, handleFirestoreError, OperationType } from '../lib/auth';
+import { db } from '../lib/firebase';
+import { 
+  collection, query, where, onSnapshot, addDoc, 
+  deleteDoc, doc, setDoc, getDoc, serverTimestamp, orderBy 
+} from 'firebase/firestore';
 
 const CATEGORIES = [
   { name: 'Makan', icon: Utensils, color: '#10B981' },
@@ -21,6 +28,7 @@ const CATEGORIES = [
 ];
 
 export default function FinancialTracker() {
+  const { user, login, loading: authLoading } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [budget, setBudget] = useState(500000);
   const [mode, setMode] = useState<'standard' | 'budget'>('budget');
@@ -45,21 +53,36 @@ export default function FinancialTracker() {
   } | null>(null);
 
   useEffect(() => {
-    fetchRecords();
-    fetchBudget();
-  }, []);
+    if (!user) return;
 
-  const fetchRecords = async () => {
-    const res = await fetch('/api/tracker');
-    const data = await res.json();
-    setRecords(data);
-  };
+    // Fetch Records
+    const q = query(
+      collection(db, 'transactions'), 
+      where('userId', '==', user.uid),
+      orderBy('date', 'desc')
+    );
+    
+    const unsubscribeRecords = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRecords(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'transactions');
+    });
 
-  const fetchBudget = async () => {
-    const res = await fetch('/api/budget');
-    const data = await res.json();
-    setBudget(data.amount);
-  };
+    // Fetch Budget
+    const unsubscribeBudget = onSnapshot(doc(db, 'userConfigs', user.uid), (doc) => {
+      if (doc.exists()) {
+        setBudget(doc.data().budget);
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `userConfigs/${user.uid}`);
+    });
+
+    return () => {
+      unsubscribeRecords();
+      unsubscribeBudget();
+    };
+  }, [user]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,26 +101,29 @@ export default function FinancialTracker() {
 
   const executeAdd = async () => {
     const data = confirmAction?.data;
-    if (!data) return;
+    if (!data || !user) return;
 
-    await fetch('/api/tracker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
+    try {
+      await addDoc(collection(db, 'transactions'), {
         amount: Number(data.amount),
-        date: new Date(data.date).toISOString()
-      }),
-    });
-    setFormData({ 
-      amount: '', 
-      category: 'Makan', 
-      description: '',
-      date: new Date().toISOString().split('T')[0]
-    });
-    setIsAdding(false);
-    setConfirmAction(null);
-    fetchRecords();
+        category: data.category,
+        description: data.description,
+        date: new Date(data.date).toISOString(),
+        userId: user.uid,
+        createdAt: serverTimestamp()
+      });
+      
+      setFormData({ 
+        amount: '', 
+        category: 'Makan', 
+        description: '',
+        date: new Date().toISOString().split('T')[0]
+      });
+      setIsAdding(false);
+      setConfirmAction(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'transactions');
+    }
   };
 
   const handleUpdateBudget = async (newAmount: number) => {
@@ -114,16 +140,18 @@ export default function FinancialTracker() {
 
   const executeUpdateBudget = async () => {
     const newAmount = confirmAction?.data;
-    if (newAmount === undefined) return;
+    if (newAmount === undefined || !user) return;
 
-    await fetch('/api/budget', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: newAmount }),
-    });
-    setBudget(newAmount);
-    setIsSettingBudget(false);
-    setConfirmAction(null);
+    try {
+      await setDoc(doc(db, 'userConfigs', user.uid), {
+        budget: newAmount,
+        userId: user.uid
+      });
+      setConfirmAction(null);
+      setIsSettingBudget(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `userConfigs/${user.uid}`);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -141,9 +169,12 @@ export default function FinancialTracker() {
 
   const executeDelete = async () => {
     if (!confirmAction?.id) return;
-    await fetch(`/api/tracker/${confirmAction.id}`, { method: 'DELETE' });
-    setConfirmAction(null);
-    fetchRecords();
+    try {
+      await deleteDoc(doc(db, 'transactions', confirmAction.id));
+      setConfirmAction(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `transactions/${confirmAction.id}`);
+    }
   };
 
   const handleConfirm = () => {
@@ -151,6 +182,56 @@ export default function FinancialTracker() {
     else if (confirmAction?.type === 'budget') executeUpdateBudget();
     else if (confirmAction?.type === 'transaction') executeAdd();
   };
+
+  if (authLoading) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center">
+        <motion.div 
+          animate={{ rotate: 360 }} 
+          transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+        />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-24 h-24 bg-primary/10 rounded-[40px] flex items-center justify-center border border-primary/20">
+          <Smartphone className="w-10 h-10 text-primary" />
+        </div>
+        <div className="space-y-2 max-w-md">
+          <h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white">Akses Tracker Anda</h2>
+          <p className="text-slate-500 dark:text-slate-400">Silakan login dengan Google untuk mulai mencatat keuangan Anda secara aman dan otomatis.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={login}
+            className="px-10 py-5 bg-slate-900 dark:bg-primary text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20"
+          >
+            <LogIn className="w-5 h-5" />
+            Login Google
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const { loginAsGuest } = (useAuth() as any);
+              loginAsGuest();
+            }}
+            className="px-10 py-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl"
+          >
+            <Users className="w-5 h-5" />
+            Lanjutkan sebagai Tamu
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
 
   const totalSpent = records.reduce((sum, r) => sum + r.amount, 0);
   
@@ -160,7 +241,7 @@ export default function FinancialTracker() {
   })).filter(d => d.value > 0);
 
   const filteredRecords = records
-    .filter(r => r.description.toLowerCase().includes(search.toLowerCase()) || r.category.toLowerCase().includes(search.toLowerCase()))
+    .filter(r => (r.description || '').toLowerCase().includes(search.toLowerCase()) || r.category.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Group by date

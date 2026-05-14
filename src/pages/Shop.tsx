@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Star, Camera, Check, ArrowRight, Zap, Image as ImageIcon } from 'lucide-react';
+import { ShoppingBag, Star, Camera, Check, ArrowRight, Zap, Image as ImageIcon, LogIn } from 'lucide-react';
 import { formatRupiah, cn } from '../lib/utils';
-
-const PRODUCT = {
-  name: "Gantungan NFC FinTag",
-  price: 15000,
-  customPrice: 2000,
-  description: "Gantungan kunci akrilik premium dengan chip NFC NTAG213. Tahan air, awet, dan estetik.",
-  images: [
-    "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=800",
-    "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&q=80&w=800"
-  ]
-};
+import { useAuth, handleFirestoreError, OperationType } from '../lib/auth';
+import { db } from '../lib/firebase';
+import { 
+  collection, query, onSnapshot, addDoc, 
+  serverTimestamp, orderBy 
+} from 'firebase/firestore';
 
 export default function Shop() {
+  const { user, login } = useAuth();
   const [products, setProducts] = useState<any[]>([]);
   const [activeProductIdx, setActiveProductIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -30,13 +26,17 @@ export default function Shop() {
   const [isConfirming, setIsConfirming] = useState(false);
 
   useEffect(() => {
-    fetch('/api/products')
-      .then(r => r.json())
-      .then(data => {
-        setProducts(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const q = query(collection(db, 'products'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setProducts(data);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'products');
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, []);
 
   if (loading) {
@@ -64,22 +64,37 @@ export default function Shop() {
 
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      login();
+      return;
+    }
     setIsConfirming(true);
   };
 
   const executeOrder = async () => {
-    const message = `Halo Admin FinTag! Saya ingin memesan:\n\n*Produk:* ${activeProduct.name}\n*Jumlah:* ${form.quantity}\n*Custom Foto:* ${form.customPhoto ? 'Ya' : 'Tidak'}\n*Total:* ${formatRupiah(totalPrice)}\n\n*Nama:* ${form.name}\n*WA:* ${form.whatsapp}\n*Alamat:* ${form.address}\n*Catatan:* ${form.notes}`;
-    
-    const waUrl = `https://wa.me/${(import.meta as any).env.VITE_CONTACT_WHATSAPP || '6289693727197'}?text=${encodeURIComponent(message)}`;
-    
-    await fetch('/api/orders', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, totalPrice, productName: activeProduct.name }),
-    });
+    if (!user) return;
 
-    setIsConfirming(false);
-    window.open(waUrl, '_blank');
+    try {
+      const message = `Halo Admin FinTag! Saya ingin memesan:\n\n*Produk:* ${activeProduct.name}\n*Jumlah:* ${form.quantity}\n*Custom Foto:* ${form.customPhoto ? 'Ya' : 'Tidak'}\n*Total:* ${formatRupiah(totalPrice)}\n\n*Nama:* ${form.name}\n*WA:* ${form.whatsapp}\n*Alamat:* ${form.address}\n*Catatan:* ${form.notes}`;
+      
+      const waUrl = `https://wa.me/6281234567890?text=${encodeURIComponent(message)}`;
+      
+      await addDoc(collection(db, 'orders'), {
+        ...form,
+        productId: activeProduct.id,
+        productName: activeProduct.name,
+        totalPrice,
+        userId: user.uid,
+        status: 'pending',
+        date: new Date().toISOString(),
+        createdAt: serverTimestamp()
+      });
+
+      setIsConfirming(false);
+      window.open(waUrl, '_blank');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'orders');
+    }
   };
 
   return (

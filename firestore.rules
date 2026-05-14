@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      // Bootstrapped admin email
+      return isEmailVerified() && request.auth.token.email == 'mhdalfinaja@mhs.unimed.ac.id';
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['amount', 'category', 'date', 'userId']) 
+        && data.keys().size() <= 6
+        && data.amount is number 
+        && data.category is string && data.category.size() <= 50
+        && data.date is string && data.date.size() <= 50
+        && data.userId == request.auth.uid;
+    }
+
+    function isValidUserConfig(data) {
+      return data.keys().hasAll(['budget', 'userId'])
+        && data.keys().size() == 2
+        && data.budget is number
+        && data.userId == request.auth.uid;
+    }
+
+    // Collection Rules
+    match /transactions/{transactionId} {
+      allow get: if isOwner(existing().userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isEmailVerified() && isValidId(transactionId) && isValidTransaction(incoming());
+      allow update: if isEmailVerified() && isOwner(existing().userId) && isValidTransaction(incoming()) 
+        && incoming().userId == existing().userId;
+      allow delete: if isOwner(existing().userId);
+    }
+
+    match /userConfigs/{userId} {
+      allow get: if isOwner(userId);
+      allow write: if isEmailVerified() && isOwner(userId) && isValidUserConfig(incoming());
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow get: if isOwner(existing().userId) || isAdmin();
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isEmailVerified() && incoming().userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /music/{songId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

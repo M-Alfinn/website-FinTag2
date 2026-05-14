@@ -469,7 +469,7 @@ function StepCard({ number, title, description, delay }: any) {
       transition={{ delay }}
       className="bento-card group hover:bg-primary transition-colors duration-500"
     >
-      <p className="text-5xl font-black font-heading italic opacity-10 group-hover:opacity-20 group-hover:text-white mb-6 transition-all">{number}</p>
+      <p className="text-5xl font-black font-heading italic text-primary group-hover:text-white/40 mb-6 transition-all">{number}</p>
       <h3 className="text-xl font-heading font-bold dark:text-white group-hover:text-white transition-colors mb-3 leading-tight">{title}</h3>
       <p className="text-sm text-slate-500 dark:text-slate-400 group-hover:text-white/80 transition-colors font-medium leading-relaxed">{description}</p>
     </motion.div>
