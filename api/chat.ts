@@ -27,24 +27,28 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const response = await ai.models.generateContent({
+    const genAI = new GoogleGenAI(apiKey);
+    const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
-      contents: [
-        ...messages,
-        { role: 'user', parts: [{ text: text }] }
-      ],
-      config: {
-        systemInstruction: systemInstruction
-      }
+      systemInstruction: systemInstruction 
     });
+    
+    // Format history for Gemini SDK
+    const history = (messages || []).map((msg: any) => ({
+      role: msg.role === 'model' ? 'model' : 'user',
+      parts: Array.isArray(msg.parts) ? msg.parts : [{ text: String(msg.text || msg.parts?.[0]?.text || '') }]
+    }));
 
-    if (!response || !response.text) {
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(text);
+    const response = await result.response;
+    const responseText = response.text();
+
+    if (!responseText) {
       return res.status(500).json({ error: 'AI mengembalikan respons kosong' });
     }
 
-    return res.status(200).json({ text: response.text });
+    return res.status(200).json({ text: responseText });
   } catch (error: any) {
     console.error('[API CHAT] Error:', error);
     return res.status(500).json({ 
