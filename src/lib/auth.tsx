@@ -46,8 +46,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginAsGuest = async () => {
     try {
       await signInAnonymously(auth);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Guest Login Error:", error);
+      if (error.code === 'auth/operation-not-allowed') {
+        alert("Login tamu belum diaktifkan di Firebase Console. Silakan aktifkan 'Anonymous provider' di tab Authentication.");
+      } else {
+        alert("Gagal login tamu: " + (error.message || "Terjadi kesalahan tidak diketahui"));
+      }
     }
   };
 

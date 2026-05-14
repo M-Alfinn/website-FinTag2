@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShoppingBag, Plus, CheckCircle2, Trash2, Edit3,
-  Package, TrendingUp, ShieldCheck, LogIn, ArrowRight, Users
+  Package, TrendingUp, ShieldCheck, LogIn, ArrowRight
 } from 'lucide-react';
 import { formatRupiah, cn } from '../lib/utils';
 import { useAuth, handleFirestoreError, OperationType } from '../lib/auth';
@@ -13,7 +13,7 @@ import {
 } from 'firebase/firestore';
 
 export default function AdminDashboard() {
-  const { user, login, loginAsGuest, loading: authLoading } = useAuth();
+  const { user, login, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -94,23 +94,13 @@ export default function AdminDashboard() {
             <p className="text-slate-500 dark:text-slate-400 text-sm transition-colors">Hanya akun administrator yang dapat mengakses panel kontrol ini.</p>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <button 
-              onClick={login}
-              className="w-full bg-slate-900 dark:bg-primary text-white py-5 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <LogIn className="w-5 h-5" />
-              Login sebagai Admin
-            </button>
-
-            <button 
-              onClick={loginAsGuest}
-              className="w-full bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 py-5 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <Users className="w-5 h-5" />
-              Lanjutkan sebagai Tamu
-            </button>
-          </div>
+          <button 
+            onClick={login}
+            className="w-full bg-slate-900 dark:bg-primary text-white py-5 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            <LogIn className="w-5 h-5" />
+            Login sebagai Admin
+          </button>
         </motion.div>
       </div>
     );
