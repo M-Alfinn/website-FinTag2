@@ -10,12 +10,24 @@ export default defineConfig(({mode}) => {
     optimizeDeps: {
       include: ['firebase/app', 'firebase/firestore', 'firebase/auth'],
     },
+    build: {
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            firebase: ['firebase/app', 'firebase/firestore', 'firebase/auth'],
+          },
+        },
+      },
+    },
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
     server: {
