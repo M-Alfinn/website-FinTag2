@@ -25,9 +25,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     try {
+      // Check if we are in an iframe
+      const isIframe = window.self !== window.top;
+      if (isIframe) {
+        console.warn("Sedang berada di dalam Iframe. Jika login gagal/muncul layar putih, silakan buka aplikasi di tab baru.");
+      }
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login Error:", error);
+      if (error.code === 'auth/popup-blocked') {
+        alert("Popup login diblokir oleh browser. Silakan izinkan popup untuk situs ini atau buka di tab baru.");
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        // Just ignore user cancellation
+      } else {
+        alert("Gagal login: " + (error.message || "Terjadi kesalahan tidak diketahui"));
+      }
     }
   };
 

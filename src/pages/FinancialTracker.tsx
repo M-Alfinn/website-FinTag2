@@ -28,7 +28,7 @@ const CATEGORIES = [
 ];
 
 export default function FinancialTracker() {
-  const { user, login, loading: authLoading } = useAuth();
+  const { user, login, loginAsGuest, loading: authLoading } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [budget, setBudget] = useState(500000);
   const [mode, setMode] = useState<'standard' | 'budget'>('budget');
@@ -219,10 +219,7 @@ export default function FinancialTracker() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              const { loginAsGuest } = (useAuth() as any);
-              loginAsGuest();
-            }}
+            onClick={loginAsGuest}
             className="px-10 py-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl"
           >
             <Users className="w-5 h-5" />
