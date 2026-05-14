@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  MessageSquare, Sun, X, Sparkles, Send
+  MessageSquare, Sun, X, Sparkles, Send,
+  Cloud, CloudRain, CloudLightning, Snowflake, CloudFog
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { cn } from './lib/utils';
@@ -59,6 +60,17 @@ function WeatherWidget() {
 
   if (!weather) return null;
 
+  const WeatherIcon = () => {
+    switch (weather.icon) {
+      case 'Cloud': return <Cloud className="w-5 h-5 text-primary animate-pulse" />;
+      case 'CloudRain': return <CloudRain className="w-5 h-5 text-primary animate-pulse" />;
+      case 'CloudLightning': return <CloudLightning className="w-5 h-5 text-primary animate-pulse" />;
+      case 'Snowflake': return <Snowflake className="w-5 h-5 text-primary animate-pulse" />;
+      case 'CloudFog': return <CloudFog className="w-5 h-5 text-primary animate-pulse" />;
+      default: return <Sun className="w-5 h-5 text-primary animate-pulse" />;
+    }
+  };
+
   return (
     <motion.div 
       initial={{ x: 100, opacity: 0 }}
@@ -66,7 +78,7 @@ function WeatherWidget() {
       className="fixed bottom-24 right-8 z-40 flex items-center gap-3 p-3 glass rounded-2xl shadow-xl border border-white/20 dark:border-white/10 select-none transition-colors scale-90 md:scale-100"
     >
       <div className="bg-primary/20 p-2 rounded-xl">
-        <Sun className="w-5 h-5 text-primary animate-pulse" />
+        <WeatherIcon />
       </div>
       <div>
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{weather.city}</p>
