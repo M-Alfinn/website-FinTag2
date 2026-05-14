@@ -75,14 +75,17 @@ function WeatherWidget() {
     <motion.div 
       initial={{ x: 100, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="fixed bottom-24 right-8 z-40 flex items-center gap-3 p-3 glass rounded-2xl shadow-xl border border-white/20 dark:border-white/10 select-none transition-colors scale-90 md:scale-100"
+      className="fixed top-20 right-4 md:top-auto md:bottom-24 md:right-8 z-40 flex items-center gap-2 md:gap-3 p-2 md:p-3 glass rounded-xl md:rounded-2xl shadow-xl border border-white/20 dark:border-white/10 select-none transition-all scale-90 md:scale-100"
     >
-      <div className="bg-primary/20 p-2 rounded-xl">
+      <div className="bg-primary/20 p-1.5 md:p-2 rounded-lg md:rounded-xl">
         <WeatherIcon />
       </div>
-      <div>
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{weather.city}</p>
-        <p className="text-sm font-bold text-slate-900 dark:text-white">{weather.temp}°C • {weather.condition}</p>
+      <div className="pr-1">
+        <p className="hidden md:block text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{weather.city}</p>
+        <p className="text-xs md:text-sm font-bold text-slate-900 dark:text-white leading-none md:leading-normal">
+          <span className="md:hidden text-[10px] text-primary/70">{weather.city} • </span>
+          {weather.temp}°C <span className="hidden md:inline">• {weather.condition}</span>
+        </p>
       </div>
     </motion.div>
   );
