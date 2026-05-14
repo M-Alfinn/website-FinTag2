@@ -63,7 +63,7 @@ function WeatherWidget() {
     <motion.div 
       initial={{ x: 100, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="fixed bottom-24 right-8 z-40 hidden md:flex items-center gap-3 p-3 glass rounded-2xl shadow-xl border border-white/20 dark:border-white/10 select-none transition-colors"
+      className="fixed bottom-24 right-8 z-40 flex items-center gap-3 p-3 glass rounded-2xl shadow-xl border border-white/20 dark:border-white/10 select-none transition-colors scale-90 md:scale-100"
     >
       <div className="bg-primary/20 p-2 rounded-xl">
         <Sun className="w-5 h-5 text-primary animate-pulse" />
