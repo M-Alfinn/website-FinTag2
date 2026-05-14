@@ -1,6 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 
 export default async function handler(req: any, res: any) {
+  if (req.method === 'GET') {
+    return res.status(200).json({ message: 'API Chat is active. Please use POST.' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -23,33 +27,24 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    const genAI = new GoogleGenAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash",
-      systemInstruction: systemInstruction 
-    });
+    const ai = new GoogleGenAI({ apiKey });
     
-    // Format history untuk Gemini SDK
-    const history = (messages || []).map((m: any) => ({
-      role: m.role === 'model' ? 'model' : 'user',
-      parts: Array.isArray(m.parts) ? m.parts : [{ text: String(m.text || "") }]
-    }));
-
-    console.log('[API CHAT] History formatted:', JSON.stringify(history));
-
-    const chat = model.startChat({
-      history: history,
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: [
+        ...messages,
+        { role: 'user', parts: [{ text: text }] }
+      ],
+      config: {
+        systemInstruction: systemInstruction
+      }
     });
 
-    const result = await chat.sendMessage(text);
-    const response = await result.response;
-    const responseText = response.text();
-
-    if (!responseText) {
+    if (!response || !response.text) {
       return res.status(500).json({ error: 'AI mengembalikan respons kosong' });
     }
 
-    return res.status(200).json({ text: responseText });
+    return res.status(200).json({ text: response.text });
   } catch (error: any) {
     console.error('[API CHAT] Error:', error);
     return res.status(500).json({ 
