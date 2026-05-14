@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, onAuthStateChanged, User, signInWithPopup, googleProvider, signOut } from './firebase';
+import { auth, onAuthStateChanged, User, signInWithPopup, googleProvider, signOut, signInAnonymously } from './firebase';
 
 interface AuthContextType {
   user: User | null;
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, loginAsGuest, logout }}>
       {children}
     </AuthContext.Provider>
   );

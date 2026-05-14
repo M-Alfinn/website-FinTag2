@@ -1,12 +1,46 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  MessageSquare, Sun, X, Sparkles, Send,
-  Cloud, CloudRain, CloudLightning, Snowflake, CloudFog
-} from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { cn } from './lib/utils';
 import ReactMarkdown from 'react-markdown';
+import { 
+  MessageSquare, Sun, X, Sparkles, Send,
+  Cloud, CloudRain, CloudLightning, Snowflake, CloudFog,
+  AlertCircle, RefreshCw
+} from 'lucide-react';
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode, title?: string }, { hasError: boolean, error: Error | null }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error(`ErrorBoundary [${this.props.title || 'General'}] caught an error`, error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center glass rounded-[32px] border border-rose-100 dark:border-rose-900/30 m-4">
+          <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-500 mx-auto mb-4">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">{this.props.title || 'Halaman'} Gagal Dimuat</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 mb-4">{this.state.error?.message}</p>
+          <button onClick={() => window.location.reload()} className="px-4 py-2 bg-slate-900 dark:bg-primary text-white rounded-xl text-xs font-bold flex items-center gap-2 mx-auto">
+            <RefreshCw className="w-3 h-3" /> MUAT ULANG
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Initialize Gemini AI (Moved to backend for security)
 // Pages
@@ -22,28 +56,37 @@ import AdminDashboard from './pages/AdminDashboard';
 
 // Components
 import SharedLayout from './components/SharedLayout';
+import { AuthProvider } from './lib/auth';
 
 export default function App() {
   return (
     <Router>
-      <div className="noise-overlay" />
-      <SharedLayout>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/tracker" element={<FinancialTracker />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/games" element={<MiniGames />} />
-            <Route path="/challenge" element={<Challenge />} />
-            <Route path="/music" element={<MusicPlayer />} />
-            <Route path="/ar" element={<ARGuide />} />
-            <Route path="/pomodoro" element={<Pomodoro />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-          </Routes>
-        </AnimatePresence>
-      </SharedLayout>
-      <WeatherWidget />
-      <AIChatBubble />
+      <AuthProvider>
+        <div className="noise-overlay" />
+        <SharedLayout>
+          <AnimatePresence mode="wait">
+            <ErrorBoundary title="Navigasi">
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/tracker" element={<FinancialTracker />} />
+                <Route path="/shop" element={<Shop />} />
+                <Route path="/games" element={<MiniGames />} />
+                <Route path="/challenge" element={<Challenge />} />
+                <Route path="/music" element={<MusicPlayer />} />
+                <Route path="/ar" element={<ARGuide />} />
+                <Route path="/pomodoro" element={<Pomodoro />} />
+                <Route path="/admin" element={<AdminDashboard />} />
+              </Routes>
+            </ErrorBoundary>
+          </AnimatePresence>
+        </SharedLayout>
+        <ErrorBoundary title="Weather">
+          <WeatherWidget />
+        </ErrorBoundary>
+        <ErrorBoundary title="Chat AI">
+          <AIChatBubble />
+        </ErrorBoundary>
+      </AuthProvider>
     </Router>
   );
 }

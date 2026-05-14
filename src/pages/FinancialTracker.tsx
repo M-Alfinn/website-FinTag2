@@ -4,7 +4,7 @@ import {
   Plus, Search, Wallet, PieChart, TrendingDown, 
   Trash2, Filter, Smartphone, Scan, Bell, MoreVertical,
   Coffee, ShoppingBag, GraduationCap, Utensils, Bus, Gamepad2,
-  LogIn, LogOut
+  LogIn, LogOut, Users
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
