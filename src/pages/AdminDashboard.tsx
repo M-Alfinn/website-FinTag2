@@ -13,7 +13,8 @@ import {
 } from 'firebase/firestore';
 
 export default function AdminDashboard() {
-  const { user, login, loading: authLoading } = useAuth();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<'orders' | 'products'>('orders');
   const [orders, setOrders] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', description: '', image: '' });
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingOrder, setEditingOrder] = useState<any>(null);
+  const [error, setError] = useState('');
   const [confirmAction, setConfirmAction] = useState<{ 
     type: 'delete' | 'save' | 'add', 
     id?: string, 
@@ -35,18 +37,24 @@ export default function AdminDashboard() {
     color: string
   } | null>(null);
 
-  // Admin access check - Based on the email verified in Firebase setup
-  const isAdmin = user?.email === 'mhdalfinaja@mhs.unimed.ac.id';
+  // Hardcoded password as requested "password saja"
+  const ADMIN_PASSWORD = 'admin123';
 
   useEffect(() => {
-    if (!isAdmin) return;
+    // Session persistence for admin
+    const sessionAuth = sessionStorage.getItem('admin_auth');
+    if (sessionAuth === 'true') setIsAuthorized(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
 
     // Fetch Orders
     const qOrders = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
       setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'orders');
+      console.error("Orders sync error:", error);
     });
 
     // Fetch Products
@@ -55,7 +63,7 @@ export default function AdminDashboard() {
       setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'products');
+      console.error("Products sync error:", error);
       setLoading(false);
     });
 
@@ -63,44 +71,60 @@ export default function AdminDashboard() {
       unsubscribeOrders();
       unsubscribeProducts();
     };
-  }, [isAdmin]);
+  }, [isAuthorized]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      setIsAuthorized(true);
+      sessionStorage.setItem('admin_auth', 'true');
+      setError('');
+    } else {
+      setError('Password salah! Silakan coba lagi.');
+    }
+  };
 
   const tabs = [
     { id: 'orders', label: 'Pesanan', icon: ShoppingBag },
     { id: 'products', label: 'Produk Shop', icon: Package },
   ];
 
-  if (authLoading) {
-     return (
-       <div className="h-[60vh] flex items-center justify-center">
-         <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: "linear" }} className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full" />
-       </div>
-     );
-  }
-
-  if (!user || !isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6">
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bento-card p-10 space-y-8 dark:bg-slate-900/40 text-center"
+          className="w-full max-w-sm bento-card p-10 space-y-8 dark:bg-slate-900/40"
         >
-          <div className="space-y-4">
-            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 rounded-[40px] flex items-center justify-center mx-auto mb-4 border border-rose-100 dark:border-rose-900/10">
-               <ShieldCheck className="w-10 h-10 text-rose-500" />
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-primary/10 dark:bg-primary/20 rounded-[40px] flex items-center justify-center mx-auto mb-4 border border-primary/20">
+               <ShieldCheck className="w-10 h-10 text-primary" />
             </div>
-            <h1 className="text-3xl font-heading font-bold dark:text-white transition-colors">Admin Only</h1>
-            <p className="text-slate-500 dark:text-slate-400 text-sm transition-colors">Hanya akun administrator yang dapat mengakses panel kontrol ini.</p>
+            <h1 className="text-3xl font-heading font-bold dark:text-white transition-colors">Admin Login</h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm transition-colors">Masukkan password administrator untuk melanjutkan.</p>
           </div>
 
-          <button 
-            onClick={login}
-            className="w-full bg-slate-900 dark:bg-primary text-white py-5 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-          >
-            <LogIn className="w-5 h-5" />
-            Login sebagai Admin
-          </button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-2xl px-6 py-4 text-center font-bold focus:ring-2 focus:ring-primary/20 transition-all dark:text-white"
+              />
+              {error && <p className="text-rose-500 text-[10px] font-bold text-center uppercase tracking-widest">{error}</p>}
+            </div>
+            <button 
+              type="submit"
+              className="w-full bg-slate-900 dark:bg-primary text-white py-5 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <LogIn className="w-5 h-5" />
+              Masuk Panel
+            </button>
+          </form>
+          <p className="text-[10px] text-slate-400 dark:text-slate-600 text-center uppercase tracking-[0.2em] font-bold">Hanya untuk pengelola</p>
         </motion.div>
       </div>
     );

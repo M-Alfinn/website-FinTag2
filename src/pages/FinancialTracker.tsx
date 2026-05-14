@@ -4,7 +4,7 @@ import {
   Plus, Search, Wallet, PieChart, TrendingDown, 
   Trash2, Filter, Smartphone, Scan, Bell, MoreVertical,
   Coffee, ShoppingBag, GraduationCap, Utensils, Bus, Gamepad2,
-  LogIn, LogOut, Users
+  LogIn, LogOut, Users, AlertCircle
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -28,7 +28,7 @@ const CATEGORIES = [
 ];
 
 export default function FinancialTracker() {
-  const { user, login, loginAsGuest, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [records, setRecords] = useState<any[]>([]);
   const [budget, setBudget] = useState(500000);
   const [mode, setMode] = useState<'standard' | 'budget'>('budget');
@@ -52,10 +52,20 @@ export default function FinancialTracker() {
     color: string
   } | null>(null);
 
+  // Load local data if not logged in
+  useEffect(() => {
+    if (!user) {
+      const localRecords = localStorage.getItem('fintag_records');
+      const localBudget = localStorage.getItem('fintag_budget');
+      if (localRecords) setRecords(JSON.parse(localRecords));
+      if (localBudget) setBudget(Number(localBudget));
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
 
-    // Fetch Records
+    // Fetch Records from Firebase if logged in
     const q = query(
       collection(db, 'transactions'), 
       where('userId', '==', user.uid),
@@ -66,16 +76,16 @@ export default function FinancialTracker() {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setRecords(data);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'transactions');
+      console.warn("Using offline mode as login is optional for tracker");
     });
 
-    // Fetch Budget
+    // Fetch Budget from Firebase if logged in
     const unsubscribeBudget = onSnapshot(doc(db, 'userConfigs', user.uid), (doc) => {
       if (doc.exists()) {
         setBudget(doc.data().budget);
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `userConfigs/${user.uid}`);
+      console.warn("Budget set to default/local");
     });
 
     return () => {
@@ -101,29 +111,42 @@ export default function FinancialTracker() {
 
   const executeAdd = async () => {
     const data = confirmAction?.data;
-    if (!data || !user) return;
+    if (!data) return;
 
-    try {
-      await addDoc(collection(db, 'transactions'), {
-        amount: Number(data.amount),
-        category: data.category,
-        description: data.description,
-        date: new Date(data.date).toISOString(),
-        userId: user.uid,
-        createdAt: serverTimestamp()
-      });
-      
-      setFormData({ 
-        amount: '', 
-        category: 'Makan', 
-        description: '',
-        date: new Date().toISOString().split('T')[0]
-      });
-      setIsAdding(false);
-      setConfirmAction(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'transactions');
+    const newRecord = {
+      id: Math.random().toString(36).substr(2, 9),
+      amount: Number(data.amount),
+      category: data.category,
+      description: data.description,
+      date: new Date(data.date).toISOString(),
+      createdAt: new Date().toISOString()
+    };
+
+    if (user) {
+      try {
+        await addDoc(collection(db, 'transactions'), {
+          ...newRecord,
+          userId: user.uid,
+          createdAt: serverTimestamp()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'transactions');
+      }
+    } else {
+      // Local Storage Mode
+      const updatedRecords = [newRecord, ...records];
+      setRecords(updatedRecords);
+      localStorage.setItem('fintag_records', JSON.stringify(updatedRecords));
     }
+    
+    setFormData({ 
+      amount: '', 
+      category: 'Makan', 
+      description: '',
+      date: new Date().toISOString().split('T')[0]
+    });
+    setIsAdding(false);
+    setConfirmAction(null);
   };
 
   const handleUpdateBudget = async (newAmount: number) => {
@@ -140,18 +163,23 @@ export default function FinancialTracker() {
 
   const executeUpdateBudget = async () => {
     const newAmount = confirmAction?.data;
-    if (newAmount === undefined || !user) return;
+    if (newAmount === undefined) return;
 
-    try {
-      await setDoc(doc(db, 'userConfigs', user.uid), {
-        budget: newAmount,
-        userId: user.uid
-      });
-      setConfirmAction(null);
-      setIsSettingBudget(false);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `userConfigs/${user.uid}`);
+    if (user) {
+      try {
+        await setDoc(doc(db, 'userConfigs', user.uid), {
+          budget: newAmount,
+          userId: user.uid
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, `userConfigs/${user.uid}`);
+      }
+    } else {
+      setBudget(newAmount);
+      localStorage.setItem('fintag_budget', newAmount.toString());
     }
+    setConfirmAction(null);
+    setIsSettingBudget(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -169,12 +197,19 @@ export default function FinancialTracker() {
 
   const executeDelete = async () => {
     if (!confirmAction?.id) return;
-    try {
-      await deleteDoc(doc(db, 'transactions', confirmAction.id));
-      setConfirmAction(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `transactions/${confirmAction.id}`);
+    
+    if (user) {
+      try {
+        await deleteDoc(doc(db, 'transactions', confirmAction.id));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, `transactions/${confirmAction.id}`);
+      }
+    } else {
+      const updatedRecords = records.filter(r => r.id !== confirmAction.id);
+      setRecords(updatedRecords);
+      localStorage.setItem('fintag_records', JSON.stringify(updatedRecords));
     }
+    setConfirmAction(null);
   };
 
   const handleConfirm = () => {
@@ -191,41 +226,6 @@ export default function FinancialTracker() {
           transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
           className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
         />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="h-[60vh] flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="w-24 h-24 bg-primary/10 rounded-[40px] flex items-center justify-center border border-primary/20">
-          <Smartphone className="w-10 h-10 text-primary" />
-        </div>
-        <div className="space-y-2 max-w-md">
-          <h2 className="text-3xl font-heading font-bold text-slate-900 dark:text-white">Akses Tracker Anda</h2>
-          <p className="text-slate-500 dark:text-slate-400">Silakan login dengan Google untuk mulai mencatat keuangan Anda secara aman dan otomatis.</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={login}
-            className="px-10 py-5 bg-slate-900 dark:bg-primary text-white rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-primary/20"
-          >
-            <LogIn className="w-5 h-5" />
-            Login Google
-          </motion.button>
-
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={loginAsGuest}
-            className="px-10 py-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-white/10 rounded-3xl font-bold flex items-center justify-center gap-3 shadow-xl"
-          >
-            <Users className="w-5 h-5" />
-            Lanjutkan sebagai Tamu
-          </motion.button>
-        </div>
       </div>
     );
   }
