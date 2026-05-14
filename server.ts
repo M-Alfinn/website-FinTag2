@@ -320,7 +320,7 @@ async function startServer() {
       const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: [
           ...messages,
           { role: 'user', parts: [{ text: text }] }
