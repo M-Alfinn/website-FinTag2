@@ -169,18 +169,29 @@ function AIChatBubble() {
 
       let result;
       try {
+        const contentType = response.headers.get("content-type");
         const responseText = await response.text();
+        
+        if (!response.ok) {
+          if (contentType && contentType.includes("application/json")) {
+            result = JSON.parse(responseText);
+            throw new Error(result.details || result.error || 'Server error');
+          } else {
+            // This is likely a Vercel/Server 404 or 500 HTML page
+            if (response.status === 404) {
+              throw new Error("API tidak ditemukan (404). Jika di Vercel, pastikan kamu sudah melakukan konfigurasi Backend.");
+            }
+            throw new Error(`Server error (${response.status}): ${responseText.substring(0, 50)}...`);
+          }
+        }
+        
         if (!responseText) {
           throw new Error("Server mengirim respons kosong.");
         }
         result = JSON.parse(responseText);
       } catch (e: any) {
-        console.error('JSON Parse error:', e);
-        throw new Error(`Gagal memproses data AI: ${e.message}. Pastikan server berjalan dengan benar.`);
-      }
-      
-      if (!response.ok) {
-        throw new Error(result.details || result.error || 'Chat API failed');
+        console.error('Fetch/Parse error:', e);
+        throw e;
       }
       
       const botText = result.text || "Maaf, saya tidak bisa memberikan jawaban saat ini.";
